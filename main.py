@@ -1,10 +1,10 @@
 # main.py
 from proc_tracer.tracer import ProcTracer
-from proc_tracer.callbacks import StatusTracker
+from proc_tracer.callbacks import ProcessTreeTracker
 
 def main():
     # Instantiate our tracer
-    tracker = StatusTracker()
+    tracker = ProcessTreeTracker()
     tracer = ProcTracer(bpf_file_path="bpf/probes.c")
 
     # Attach the callbacks we want to use
