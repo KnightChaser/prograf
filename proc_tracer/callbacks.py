@@ -40,7 +40,7 @@ class ProcessTreeTracker:
         """
         print("\033[H\033[J", end='')
 
-    def _print_tree(self):
+    def print_tree(self):
         """
         Prints the entire process tree by finding roots and traversing.
         """
@@ -102,8 +102,6 @@ class ProcessTreeTracker:
         self.nodes[event.pid] = child_node
         parent_node.children[event.pid] = child_node
 
-        self._print_tree()
-
     def handle_exec(self, cpu, data, size):
         """
         Callback for exec(sched_process_exec) events.
@@ -125,8 +123,6 @@ class ProcessTreeTracker:
                                comm=event.comm.decode('utf-8', 'replace'), 
                                is_initial=True)
             self.nodes[event.pid] = node
-
-        self._print_tree()
 
     def handle_exit(self, cpu, data, size):
         """
@@ -154,5 +150,3 @@ class ProcessTreeTracker:
 
         # Finally, remove the exiting node from our main nodes dictionary
         del self.nodes[event.pid]
-
-        self._print_tree()

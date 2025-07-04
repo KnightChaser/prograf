@@ -1,6 +1,7 @@
 # proc_tracer/tracer.py
 
 from bcc import BPF
+import time
 
 class ProcTracer:
     def __init__(self, bpf_file_path):
@@ -22,14 +23,25 @@ class ProcTracer:
         self.bpf["fork_events"].open_perf_buffer(fork_cb)
         self.bpf["exit_events"].open_perf_buffer(exit_cb)
 
-    def run(self):
+    def run(self, tracker, refresh_rate_hz=5):
         """
         Starts the tracer and polls for events indefinitely.
         """
         print("Tracing process events... Ctrl+C to quit.")
+        last_refresh_time = 0
+        refresh_interval_sec = 1.0 / refresh_rate_hz
+
         while True:
             try:
-                self.bpf.perf_buffer_poll()
+                self.bpf.perf_buffer_poll(timeout=200)
+
+                # Check if it's time to refresh the screen
+                now = time.time()
+                if now - last_refresh_time > refresh_interval_sec:
+                    tracker.print_tree()
+                    last_refresh_time = now
+
             except KeyboardInterrupt:
-                print("\nDetaching...")
-                exit()
+                print("\nExiting...")
+                tracker.print_tree()
+                break

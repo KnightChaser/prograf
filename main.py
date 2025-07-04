@@ -15,7 +15,7 @@ def main():
     )
 
     # Run the tracer
-    tracer.run()
+    tracer.run(tracker=tracker)
 
 if __name__ == "__main__":
     main()
