@@ -27,8 +27,20 @@ BPF_PERF_OUTPUT(exec_events);
 BPF_PERF_OUTPUT(fork_events);
 BPF_PERF_OUTPUT(exit_events);
 
-// 1. execve syscall entry
+// 1a. execve syscall entry
 TRACEPOINT_PROBE(syscalls, sys_enter_execve) {
+  struct exec_data data = {};
+  data.pid = bpf_get_current_pid_tgid() >> 32;
+  bpf_get_current_comm(&data.comm, sizeof(data.comm));
+  bpf_probe_read_user_str(&data.fname, sizeof(data.fname),
+                          (void *)args->filename);
+
+  exec_events.perf_submit(args, &data, sizeof(data));
+  return 0;
+}
+
+// 1b. execveat syscall entry
+TRACEPOINT_PROBE(syscalls, sys_enter_execveat) {
   struct exec_data data = {};
   data.pid = bpf_get_current_pid_tgid() >> 32;
   bpf_get_current_comm(&data.comm, sizeof(data.comm));
