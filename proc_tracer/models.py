@@ -17,9 +17,12 @@ class ProcessNode:
         self.creation_time = creation_time
         self.exit_time = 0
 
+        # State attributes
+        self.is_active = True
+        self.is_initial = is_initial
+
         # Children are stored as a dictionary for efficient lookup
         self.children = {}
-        self.is_initial = is_initial
 
     @property
     def execution_time_s(self):

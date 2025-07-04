@@ -3,6 +3,7 @@
 import os
 import time
 import ctypes as ct
+from .models import ProcessNode
 from .events import ExecData, ForkData, ExitData
 from .models import ProcessNode
 
@@ -12,7 +13,7 @@ class ProcessTreeTracker:
     A stateful class to build and display a live process tree from eBPF events.
     """
 
-    def __init__(self, max_history=20):
+    def __init__(self, max_history=10):
         # The core data structure
         # - Key: pid (int)
         # - Value: ProcessNode instance
@@ -67,6 +68,46 @@ class ProcessTreeTracker:
         for node in self.nodes.values():
             if node.ppid in self.nodes:
                 self.nodes[node.ppid].children[node.pid] = node
+
+    def _find_root(self, node: ProcessNode):
+        """
+        (Helper method)
+        Traverse up the tree to find the root of a given node.
+        """
+        current = node
+        while current.ppid in self.nodes:
+            parent = self.nodes.get(current.ppid)
+            if not parent:
+                break
+            current = parent
+        return current
+
+    def _is_tree_terminated(self, node: ProcessNode):
+        """
+        (Helper method)
+        Recursively checks if a node and all its descendents (children nodes)
+        are all inactivate to check if the process tree is terminated.
+        """
+        # base case
+        if node.is_active:
+            return False
+
+        # If the node has no children, it's a leaf node
+        for child in node.children.values():
+            if not self._is_tree_terminated(child):
+                return False
+
+        return True
+
+    def _prune_tree(self, node: ProcessNode):
+        """
+        (Helper method)
+        Recursively removes a node and all its children from self.nodes
+        """
+        for child in node.children.values():
+            self._prune_tree(child)
+        if node.pid in self.nodes:
+            del self.nodes[node.pid]
 
     def handle_fork(self, cpu, data, size):
         """
@@ -141,21 +182,19 @@ class ProcessTreeTracker:
             # Do not track if the process is not in our tree
             return
 
-        # Set the exit time
+        # Set the exit time and mark the node as inactive
         exiting_node.exit_time = event.ts
+        exiting_node.is_active = False
 
-        # Unlink from the parent
-        parent_node = self.nodes.get(exiting_node.ppid)
-        if parent_node and event.pid in parent_node.children:
-            del parent_node.children[event.pid]
+        # Find the root of the tree this node belongs to
+        root = self._find_root(exiting_node)
 
-        # NOTE: The children of the exiting node are now orphans (orphaned processes).
-        # The rendering will be automatically updated to reflect this.
+        # Check if the entire tree from the root down is now terminated.
+        # If so, prune it from the live node and move the entire tree!
+        if self._is_tree_terminated(root):
+            self._prune_tree(root)
 
-        # Move from live nodes to history
-        del self.nodes[event.pid]
-
-        # Add to history and keep history list at a fixed size at most `max_history`
-        self.history.insert(0, exiting_node)
-        if len(self.history) > self.max_history:
-            self.history.pop()
+            # Move the entire tree to history
+            self.history.insert(0, root)
+            if len(self.history) > self.max_history:
+                self.history.pop()
