@@ -11,6 +11,7 @@ struct exec_data {
 };
 
 struct fork_data {
+  u64 ts;
   u32 ppid;
   u32 pid;
   char pcomm[TASK_COMM_LEN];
@@ -18,6 +19,7 @@ struct fork_data {
 };
 
 struct exit_data {
+  u64 ts;
   u32 pid;
   char comm[TASK_COMM_LEN];
 };
@@ -54,6 +56,7 @@ TRACEPOINT_PROBE(syscalls, sys_enter_execveat) {
 // 2. process fork
 TRACEPOINT_PROBE(sched, sched_process_fork) {
   struct fork_data data = {};
+  data.ts = bpf_ktime_get_ns();
   data.ppid = args->parent_pid;
   data.pid = args->child_pid;
   bpf_probe_read_kernel_str(&data.pcomm, sizeof(data.pcomm), args->parent_comm);
@@ -66,6 +69,7 @@ TRACEPOINT_PROBE(sched, sched_process_fork) {
 // 3. process exit
 TRACEPOINT_PROBE(sched, sched_process_exit) {
   struct exit_data data = {};
+  data.ts = bpf_ktime_get_ns();
   data.pid = args->pid;
   bpf_probe_read_kernel_str(&data.comm, sizeof(data.comm), args->comm);
 
