@@ -29,28 +29,26 @@ BPF_PERF_OUTPUT(exec_events);
 BPF_PERF_OUTPUT(fork_events);
 BPF_PERF_OUTPUT(exit_events);
 
-// 1a. execve syscall entry
-TRACEPOINT_PROBE(syscalls, sys_enter_execve) {
+// HELPER FUNCTION for exec* syscalls
+static inline int process_exec(void *ctx, const char __user *filename) {
   struct exec_data data = {};
+
+  // Get PID and command
   data.pid = bpf_get_current_pid_tgid() >> 32;
   bpf_get_current_comm(&data.comm, sizeof(data.comm));
-  bpf_probe_read_user_str(&data.fname, sizeof(data.fname),
-                          (void *)args->filename);
+  bpf_probe_read_user_str(&data.fname, sizeof(data.fname), filename);
 
-  exec_events.perf_submit(args, &data, sizeof(data));
   return 0;
+}
+
+// 1a. execve syscall entry
+TRACEPOINT_PROBE(syscalls, sys_enter_execve) {
+  return process_exec(args, args->filename);
 }
 
 // 1b. execveat syscall entry
 TRACEPOINT_PROBE(syscalls, sys_enter_execveat) {
-  struct exec_data data = {};
-  data.pid = bpf_get_current_pid_tgid() >> 32;
-  bpf_get_current_comm(&data.comm, sizeof(data.comm));
-  bpf_probe_read_user_str(&data.fname, sizeof(data.fname),
-                          (void *)args->filename);
-
-  exec_events.perf_submit(args, &data, sizeof(data));
-  return 0;
+  return process_exec(args, args->filename);
 }
 
 // 2. process fork
