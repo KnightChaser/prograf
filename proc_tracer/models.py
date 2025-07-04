@@ -20,9 +20,21 @@ class ProcessNode:
         # State attributes
         self.is_active = True
         self.is_initial = is_initial
+        self.activate_children_count = (
+            0  # Count of immediate children that are still active
+        )
 
         # Children are stored as a dictionary for efficient lookup
         self.children = {}
+
+    @property
+    def is_terminated_tree(self):
+        """
+        Checks if this node represents a fully terminated tree.
+        This is true if the node itself is inactive and all its children have
+        also terminated. This replaces the expensive recursive check!
+        """
+        return not self.is_active and self.activate_children_count == 0
 
     @property
     def execution_time_s(self):

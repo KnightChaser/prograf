@@ -5,7 +5,6 @@ import time
 import ctypes as ct
 from .models import ProcessNode
 from .events import ExecData, ForkData, ExitData
-from .models import ProcessNode
 
 
 class ProcessTreeTracker:
@@ -67,7 +66,9 @@ class ProcessTreeTracker:
         # Second pass: Link children to parents, which was missing.
         for node in self.nodes.values():
             if node.ppid in self.nodes:
-                self.nodes[node.ppid].children[node.pid] = node
+                parent = self.nodes[node.ppid]
+                parent.children[node.pid] = node
+                parent.activave_children_count += 1
 
     def _find_root(self, node: ProcessNode):
         """
@@ -81,23 +82,6 @@ class ProcessTreeTracker:
                 break
             current = parent
         return current
-
-    def _is_tree_terminated(self, node: ProcessNode):
-        """
-        (Helper method)
-        Recursively checks if a node and all its descendents (children nodes)
-        are all inactivate to check if the process tree is terminated.
-        """
-        # base case
-        if node.is_active:
-            return False
-
-        # If the node has no children, it's a leaf node
-        for child in node.children.values():
-            if not self._is_tree_terminated(child):
-                return False
-
-        return True
 
     def _prune_tree(self, node: ProcessNode):
         """
@@ -129,6 +113,9 @@ class ProcessTreeTracker:
                 creation_time=event.ts,
             )
             self.nodes[event.ppid] = parent_node
+
+        # Increment the parent's active children count
+        parent_node.activate_children_count += 1
 
         child_node = ProcessNode(
             event.pid,
@@ -186,15 +173,24 @@ class ProcessTreeTracker:
         exiting_node.exit_time = event.ts
         exiting_node.is_active = False
 
-        # Find the root of the tree this node belongs to
-        root = self._find_root(exiting_node)
+        # Start a chain reaction of checks up the tree.
+        # (Replacing the much slower recursive downward check)
+        current_node = exiting_node
+        while current_node:
+            parent = self.nodes.get(current_node.ppid, None)
+            if parent:
+                parent.activate_children_count -= 1
+                if parent.activate_children_count < 0:  # safety check :)
+                    parent.activate_children_count = 0
 
-        # Check if the entire tree from the root down is now terminated.
-        # If so, prune it from the live node and move the entire tree!
-        if self._is_tree_terminated(root):
-            self._prune_tree(root)
+            # If the curent node in our check is the root of a fully terminated tree,
+            # pruneit and add to history
+            if current_node.ppid not in self.nodes and current_node.is_terminated_tree:
+                self._prune_tree(current_node)
+                self.history.insert(0, current_node)
+                if len(self.history) > self.max_history:
+                    self.history.pop()
+                break  # The whole tree is gone, so we stop
 
-            # Move the entire tree to history
-            self.history.insert(0, root)
-            if len(self.history) > self.max_history:
-                self.history.pop()
+            # Move up the chain
+            current_node = parent
