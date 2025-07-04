@@ -40,7 +40,7 @@ class ProcessTreeTracker:
             pid = int(pid_str)
 
             try:
-                with open(f"/proc/{pid}/comm", "r") as f:
+                with open(f"/proc/{pid}/status", "r") as f:
                     lines = f.readlines()
 
                 comm = lines[0].strip() if lines else "<unknown>"
