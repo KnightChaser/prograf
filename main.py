@@ -1,4 +1,5 @@
 # main.py
+import os
 from proc_tracer.tracer import ProcTracer
 from proc_tracer.callbacks import ProcessTreeTracker
 from proc_tracer.renderer import ConsoleRenderer
@@ -22,4 +23,10 @@ def main():
 
 
 if __name__ == "__main__":
+    # This should be run with root privileges because
+    # it needs to attach to kernel probes.
+    if os.geteuid() != 0:
+        print("This program must be run as root! >_<")
+        exit(1)
+
     main()
