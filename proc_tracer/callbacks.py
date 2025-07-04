@@ -1,5 +1,6 @@
 # proc_tracer/callbacks.py
 
+import os
 import ctypes as ct
 from .events import ExecData, ForkData, ExitData
 
@@ -30,7 +31,10 @@ class ProcessTreeTracker:
         # - Value: ProcessNode instance
         self.nodes = {}
 
-        print("ProcessTreeTracker initialized.")
+        print("ProcessTreeTracker initialized. Populating initial state from /proc...")
+        self._populate_initial_tree()
+        print(f"Initial process tree populated with {len(self.nodes)} processes.")
+
 
     def _rewrite_screen(self):
         """
@@ -59,6 +63,47 @@ class ProcessTreeTracker:
 
         print("\n" + "="*50)
         print(f"Tracking {len(self.nodes)} processes.\n")
+
+    def _populate_initial_tree(self):
+        """
+        Scans the /proc filesystem to build an initial process tree.
+        (To track processes that existed before the tracer started.)
+        """
+        # First pass: Create a ProcessNode for every existing process
+        for pid_str in os.listdir("/proc"):
+            if not pid_str.isdigit():
+                continue
+
+            pid = int(pid_str)
+
+            try:
+                with open(f"/proc/{pid}/comm", "r") as f:
+                    lines = f.readlines()
+
+                comm = lines[0].strip() if lines else "<unknown>"
+                ppid = lines[6].strip() if len(lines) > 6 else "???"
+
+                # Create the node and add it to the nodes dictioanry
+                node = ProcessNode(
+                    pid=pid,
+                    ppid=ppid,
+                    comm=comm,
+                    is_initial=True
+                )
+                self.nodes[pid] = node
+
+            except FileNotFoundError:
+                # The process might have exited before we could read it
+                continue
+            except (ValueError, IndexError):
+                # If we can't read the comm or ppid, skip this process
+                continue
+
+        # Second pass: Link children to their parents
+        for node in self.nodes.values():
+            if node.ppid in self.nodes:
+                parent_node = self.nodes[node.ppid]
+                parent_node.children[node.pid] = node
 
     def _print_subtree(self, node, indent_level):
         """
