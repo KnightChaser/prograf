@@ -1,10 +1,13 @@
 # main.py
 from proc_tracer.tracer import ProcTracer
 from proc_tracer.callbacks import ProcessTreeTracker
+from proc_tracer.renderer import ConsoleRenderer
+
 
 def main():
     # Instantiate our tracer
     tracker = ProcessTreeTracker()
+    renderer = ConsoleRenderer(tracker=tracker)
     tracer = ProcTracer(bpf_file_path="bpf/probes.c")
 
     # Attach the callbacks we want to use
@@ -15,7 +18,8 @@ def main():
     )
 
     # Run the tracer
-    tracer.run(tracker=tracker)
+    tracer.run(renderer=renderer, refresh_rate_hz=5)
+
 
 if __name__ == "__main__":
     main()
