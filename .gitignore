@@ -1,5 +1,6 @@
 # Node modules
 node_modules
+server/logs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

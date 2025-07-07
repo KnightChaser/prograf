@@ -3,34 +3,104 @@
 <head>
     <title>Process Tracer</title>
     <style>
-        body { font-family: monospace; background-color: #1e1e1e; color: #d4d4d4; }
-        pre { white-space: pre-wrap; word-wrap: break-word; }
-        .tree { border-left: 1px solid #444; padding-left: 15px; margin-bottom: 20px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #121212; color: #e0e0e0; margin: 0; padding: 2em; }
+        h1 { border-bottom: 1px solid #333; padding-bottom: 0.5em; }
+        .nav { display: flex; align-items: center; justify-content: center; margin: 1em 0; padding: 1em; background-color: #1e1e1e; border-radius: 8px; }
+        .nav button { font-size: 1.2em; padding: 0.5em 1em; margin: 0 1em; cursor: pointer; background-color: #333; color: #fff; border: none; border-radius: 5px; }
+        .nav button:disabled { background-color: #222; color: #555; cursor: not-allowed; }
+        .nav #log-counter { font-size: 1.2em; font-variant-numeric: tabular-nums; }
+        #viewer { background-color: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 1em; min-height: 60vh; }
+        pre { white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', Courier, monospace; font-size: 0.9em; }
     </style>
 </head>
 <body>
     <h1>Live Process Termination Trees</h1>
-    <div id="trees-container"></div>
+    
+    <div class="nav">
+        <button id="prev-btn">< Prev</button>
+        <span id="log-counter">No logs yet</span>
+        <button id="next-btn">Next ></button>
+    </div>
+
+    <div id="viewer">
+        <pre id="json-output">Waiting for data...</pre>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const container = document.getElementById('trees-container');
 
-        socket.on('new_tree', function(tree) {
-            console.log('New tree received:', tree);
+        // UI Elements
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const logCounterEl = document.getElementById('log-counter');
+        const jsonOutputEl = document.getElementById('json-output');
 
-            const treeElement = document.createElement('div');
-            treeElement.className = 'tree';
+        // State
+        let currentIndex = -1;
+        let totalLogs = 0;
 
-            const preElement = document.createElement('pre');
-            preElement.textContent = JSON.stringify(tree, null, 2); // TODO: Use chart later
+        // --- Functions ---
+        async function fetchLog(index) {
+            if (index < 0 || index >= totalLogs) {
+                return;
+            }
+            try {
+                const response = await fetch(`/log/${index}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                jsonOutputEl.textContent = JSON.stringify(data, null, 2);
+                currentIndex = index;
+                updateUI();
+            } catch (error) {
+                console.error('Could not fetch log:', error);
+                jsonOutputEl.textContent = `Error loading log ${index}.`;
+            }
+        }
 
-            treeElement.appendChild(preElement);
+        function updateUI() {
+            if (totalLogs === 0) {
+                logCounterEl.textContent = 'No logs yet';
+            } else {
+                logCounterEl.textContent = `${currentIndex + 1} / ${totalLogs}`;
+            }
+            prevBtn.disabled = currentIndex <= 0;
+            nextBtn.disabled = currentIndex >= totalLogs - 1;
+        }
 
-            // Add the newest tree to the top
-            container.prepend(treeElement);
+        // --- Event Listeners ---
+        prevBtn.addEventListener('click', () => {
+            if (currentIndex > 0) {
+                fetchLog(currentIndex - 1);
+            }
         });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentIndex < totalLogs - 1) {
+                fetchLog(currentIndex + 1);
+            }
+        });
+
+        // --- Socket.IO Handlers ---
+        socket.on('update_count', (data) => {
+            const shouldFetchLatest = totalLogs > 0 && currentIndex === totalLogs - 1;
+            
+            totalLogs = data.total;
+
+            if (totalLogs > 0 && (currentIndex === -1 || shouldFetchLatest)) {
+                // If it's the first log, or if we were already on the latest log,
+                // automatically show the new latest one.
+                fetchLog(totalLogs - 1);
+            } else {
+                // Otherwise, just update the counter so we don't interrupt the user's navigation.
+                updateUI();
+            }
+        });
+
+        // Initial state
+        updateUI();
     </script>
 </body>
 </html>
