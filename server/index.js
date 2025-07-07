@@ -26,6 +26,10 @@ const tcpServer = createTcpServer(io, logFiles, LOGS_DIR);
 
 // --- Express Middleware and Routes ---
 app.use(express.static(path.join(__dirname, "public"))); // When user accesses "/"
+app.use(
+  "/libs/d3",
+  express.static(path.join(__dirname, "node_modules/d3/dist"))
+);
 app.use("/api", apiRouter);
 
 // --- Socket.IO Connection Handling ---
