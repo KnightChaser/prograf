@@ -115,7 +115,7 @@ class ProcessTreeTracker:
             self.nodes[event.ppid] = parent_node
 
         # Increment the parent's active children count
-        parent_node.activate_children_count += 1
+        parent_node.active_children_count += 1
 
         child_node = ProcessNode(
             event.pid,
@@ -165,7 +165,7 @@ class ProcessTreeTracker:
 
         # Find the node that is exiting now
         exiting_node = self.nodes.get(event.pid, None)
-        if not exiting_node:
+        if not exiting_node or not exiting_node.is_active:
             # Do not track if the process is not in our tree
             return
 
@@ -173,24 +173,40 @@ class ProcessTreeTracker:
         exiting_node.exit_time = event.ts
         exiting_node.is_active = False
 
-        # Start a chain reaction of checks up the tree.
-        # (Replacing the much slower recursive downward check)
-        current_node = exiting_node
-        while current_node:
-            parent = self.nodes.get(current_node.ppid, None)
-            if parent:
-                parent.activate_children_count -= 1
-                if parent.activate_children_count < 0:  # safety check :)
-                    parent.activate_children_count = 0
+        # Decrement the parent's active child count
+        parent_node = self.nodes.get(exiting_node.ppid, None)
+        if parent_node:
+            parent_node.active_children_count -= 1
 
-            # If the curent node in our check is the root of a fully terminated tree,
-            # pruneit and add to history
-            if current_node.ppid not in self.nodes and current_node.is_terminated_tree:
-                self._prune_tree(current_node)
-                self.history.insert(0, current_node)
+        # Check for a reapable tree.
+        # We start checking from the parent of the exiting node and move upwards.
+        node_to_check = exiting_node
+        while node_to_check:
+            is_absolute_root = (
+                node_to_check.ppid not in self.nodes
+            )  # Is this node a root?
+            is_gnome_shell_exception = (
+                node_to_check.comm == "gnome-shell"
+            )  # Is this node's comm "gnome-shell"? (Speical rule)
+
+            if (
+                is_absolute_root or is_gnome_shell_exception
+            ) and node_to_check.is_terminated_tree:
+                # We find a reapable root (either real or a gnome-shell sub-root).
+                # First, unlink it from its own parent to break the tree structure.
+                reap_root_parent = self.nodes.get(node_to_check.ppid, None)
+                if reap_root_parent and node_to_check.pid in reap_root_parent.children:
+                    del reap_root_parent.children[node_to_check.pid]
+
+                # Now prune the entire sub-tree from the live nodes
+                self._prune_tree(node_to_check)
+
+                # Then, move 'em to history
+                self.history.insert(0, node_to_check)
                 if len(self.history) > self.max_history:
                     self.history.pop()
-                break  # The whole tree is gone, so we stop
 
-            # Move up the chain
-            current_node = parent
+                return
+
+            # Move up the tree if we are not at the root
+            node_to_check = self.nodes.get(node_to_check.ppid, None)

@@ -20,7 +20,7 @@ class ProcessNode:
         # State attributes
         self.is_active = True
         self.is_initial = is_initial
-        self.activate_children_count = (
+        self.active_children_count = (
             0  # Count of immediate children that are still active
         )
 
@@ -34,7 +34,7 @@ class ProcessNode:
         This is true if the node itself is inactive and all its children have
         also terminated. This replaces the expensive recursive check!
         """
-        return not self.is_active and self.activate_children_count == 0
+        return not self.is_active and self.active_children_count == 0
 
     @property
     def execution_time_s(self):
