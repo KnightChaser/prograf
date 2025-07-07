@@ -21,16 +21,12 @@ let logFiles = []; // Shared in-memory state for log filenames
 
 // Set up cleanup logic
 setupCleanup(LOGS_DIR);
-
-// Create routers and servers from our modules
 const apiRouter = createApiRouter(logFiles, LOGS_DIR);
 const tcpServer = createTcpServer(io, logFiles, LOGS_DIR);
 
 // --- Express Middleware and Routes ---
+app.use(express.static(path.join(__dirname, "public"))); // When user accesses "/"
 app.use("/api", apiRouter);
-app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/index.html");
-});
 
 // --- Socket.IO Connection Handling ---
 io.on("connection", (socket) => {
