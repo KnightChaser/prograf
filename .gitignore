@@ -2,6 +2,9 @@
 node_modules
 server/logs
 
+# Repomix output
+repomix-output.xml
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
