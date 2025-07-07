@@ -42,8 +42,20 @@ class ProcessTreeTracker:
                 with open(f"/proc/{pid}/status", "r") as f:
                     lines = f.readlines()
 
-                comm = lines[0].strip() if lines else "<unknown>"
-                ppid = lines[6].strip() if len(lines) > 6 else "???"
+                comm = next(
+                    (l.split(":\t")[1].strip() for l in lines if l.startswith("Name:")),
+                    "<unknown>",
+                )
+                ppid = int(
+                    next(
+                        (
+                            l.split(":\t")[1].strip()
+                            for l in lines
+                            if l.startswith("PPid:")
+                        ),
+                        "-1",
+                    )
+                )
 
                 # Create the node and add it to the nodes dictioanry
                 node = ProcessNode(
@@ -67,7 +79,7 @@ class ProcessTreeTracker:
             if node.ppid in self.nodes:
                 parent = self.nodes[node.ppid]
                 parent.children[node.pid] = node
-                parent.activave_children_count += 1
+                parent.active_children_count += 1
 
     def _find_root(self, node: ProcessNode):
         """
