@@ -4,6 +4,25 @@ const net = require("net");
 const fs = require("fs");
 const path = require("path");
 
+/**
+ * Helper function to recursively traverse a process tree object
+ * and remove redundant fields.
+ * @param {object} node - The process node object to clean.
+ */
+function cleanupTree(node) {
+  if (!node) return;
+
+  // Delete the redundant fields from the current node
+  delete node.is_active;
+  delete node.is_initial;
+  delete node.active_children_count;
+
+  // Recurse for all children
+  if (node.children && Array.isArray(node.children)) {
+    node.children.forEach((child) => cleanupTree(child));
+  }
+}
+
 // createTcpServer handles incoming TCP connections from the Python tracer
 function createTcpServer(io, logFiles, LOGS_DIR) {
   const tcpServer = net.createServer((socket) => {
@@ -22,7 +41,8 @@ function createTcpServer(io, logFiles, LOGS_DIR) {
           const fileName = `${timestamp}.json`;
           const filePath = path.join(LOGS_DIR, fileName);
 
-          const processTree = JSON.parse(jsonLine);
+          let processTree = JSON.parse(jsonLine);
+          cleanupTree(processTree); // prune unnecessary fields
           fs.writeFileSync(filePath, JSON.stringify(processTree, null, 2));
 
           logFiles.push(fileName);
