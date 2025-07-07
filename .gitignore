@@ -1,6 +1,7 @@
-# Node modules
+# Node.js
 node_modules
 server/logs
+server/public/css/*
 
 # Repomix output
 repomix-output.xml
