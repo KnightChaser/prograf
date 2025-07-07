@@ -5,6 +5,7 @@ import time
 import ctypes as ct
 from .models import ProcessNode
 from .events import ExecData, ForkData, ExitData
+from .ipc import TCPClient
 
 
 class ProcessTreeTracker:
@@ -12,15 +13,13 @@ class ProcessTreeTracker:
     A stateful class to build and display a live process tree from eBPF events.
     """
 
-    def __init__(self, max_history=10):
+    def __init__(self, ipc_client: TCPClient):
         # The core data structure
         # - Key: pid (int)
         # - Value: ProcessNode instance
         self.nodes = {}
 
-        # Store a list of recently exited processes to display their final stats
-        self.history = []
-        self.max_history = max_history
+        self.ipc_client = ipc_client
 
         print("ProcessTreeTracker initialized. Populating initial state from /proc...")
         self._populate_initial_tree()
@@ -192,21 +191,15 @@ class ProcessTreeTracker:
             if (
                 is_absolute_root or is_gnome_shell_exception
             ) and node_to_check.is_terminated_tree:
-                # We find a reapable root (either real or a gnome-shell sub-root).
-                # First, unlink it from its own parent to break the tree structure.
+                # Serialize the data and send 'em over IPC
+                tree_dict = node_to_check.to_dict()
+                self.ipc_client.send_data(tree_dict)
+
+                # Unlink and prune the tree
                 reap_root_parent = self.nodes.get(node_to_check.ppid, None)
                 if reap_root_parent and node_to_check.pid in reap_root_parent.children:
                     del reap_root_parent.children[node_to_check.pid]
-
-                # Now prune the entire sub-tree from the live nodes
                 self._prune_tree(node_to_check)
-
-                # Then, move 'em to history
-                self.history.insert(0, node_to_check)
-                if len(self.history) > self.max_history:
-                    self.history.pop()
-
-                return
 
             # Move up the tree if we are not at the root
             node_to_check = self.nodes.get(node_to_check.ppid, None)

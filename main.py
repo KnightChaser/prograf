@@ -1,14 +1,22 @@
 # main.py
 import os
+import time
 from proc_tracer.tracer import ProcTracer
 from proc_tracer.callbacks import ProcessTreeTracker
-from proc_tracer.renderer import ConsoleRenderer
+from proc_tracer.ipc import TCPClient
 
 
 def main():
+    # Setup the IPC client
+    ipc_client = TCPClient()
+    if not ipc_client.connect():
+        time.sleep(2)
+        if not ipc_client.connect():
+            # retry
+            print("Failed to connect to the IPC server. Exiting.")
+
     # Instantiate our tracer
-    tracker = ProcessTreeTracker()
-    renderer = ConsoleRenderer(tracker=tracker)
+    tracker = ProcessTreeTracker(ipc_client=ipc_client)
     tracer = ProcTracer(bpf_file_path="bpf/probes.c")
 
     # Attach the callbacks we want to use
@@ -19,7 +27,7 @@ def main():
     )
 
     # Run the tracer
-    tracer.run(renderer=renderer, refresh_rate_hz=5)
+    tracer.run(refresh_rate_hz=5)
 
 
 if __name__ == "__main__":

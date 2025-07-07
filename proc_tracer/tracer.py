@@ -1,7 +1,6 @@
 # proc_tracer/tracer.py
 
 from bcc import BPF
-from .renderer import ConsoleRenderer
 import time
 
 
@@ -25,7 +24,7 @@ class ProcTracer:
         self.bpf["fork_events"].open_perf_buffer(fork_cb)
         self.bpf["exit_events"].open_perf_buffer(exit_cb)
 
-    def run(self, renderer: ConsoleRenderer, refresh_rate_hz=5):
+    def run(self, refresh_rate_hz=5):
         """
         Starts the tracer and polls for events indefinitely.
         """
@@ -40,10 +39,8 @@ class ProcTracer:
                 # Check if it's time to refresh the screen
                 now = time.time()
                 if now - last_refresh_time > refresh_interval_sec:
-                    renderer.render()
                     last_refresh_time = now
 
             except KeyboardInterrupt:
                 print("\nExiting...")
-                renderer.render()
                 break

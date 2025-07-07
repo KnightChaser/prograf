@@ -53,3 +53,19 @@ class ProcessNode:
 
         duration_ns = end_time_ns - self.creation_time
         return duration_ns / 1_000_000_000.0
+
+    def to_dict(self):
+        """
+        Recursively converts the node and its children to a dictionary.
+        """
+        return {
+            "pid": self.pid,
+            "ppid": self.ppid,
+            "comm": self.comm,
+            "creation_time": self.creation_time,
+            "exit_time": self.exit_time,
+            "is_active": self.is_active,
+            "is_initial": self.is_initial,
+            "active_children_count": self.active_children_count,
+            "children": [child.to_dict() for child in self.children.values()],
+        }

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Process Tracer</title>
+    <style>
+        body { font-family: monospace; background-color: #1e1e1e; color: #d4d4d4; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+        .tree { border-left: 1px solid #444; padding-left: 15px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Live Process Termination Trees</h1>
+    <div id="trees-container"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const container = document.getElementById('trees-container');
+
+        socket.on('new_tree', function(tree) {
+            console.log('New tree received:', tree);
+
+            const treeElement = document.createElement('div');
+            treeElement.className = 'tree';
+
+            const preElement = document.createElement('pre');
+            preElement.textContent = JSON.stringify(tree, null, 2); // TODO: Use chart later
+
+            treeElement.appendChild(preElement);
+
+            // Add the newest tree to the top
+            container.prepend(treeElement);
+        });
+    </script>
+</body>
+</html>
