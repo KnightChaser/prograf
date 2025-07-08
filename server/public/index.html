@@ -7,7 +7,7 @@
     <title>Process Tracer</title>
     <link href="/css/style.css" rel="stylesheet" />
     <style>
-      /* Add some specific styles for our D3 chart */
+      /* Styles for our D3 chart */
       .gantt-chart-container {
         overflow-x: auto;
       }
@@ -25,6 +25,12 @@
       }
       .gantt-chart .axis text {
         fill: #9ca3af;
+      }
+
+      /* Styles for the histogram chart */
+      .histogram-chart .bar {
+        fill: #ea580c;
+        stroke: #c2410c;
       }
 
       /* Styles for the tooltip */
@@ -68,12 +74,12 @@
         </button>
       </div>
 
+      <!-- Gantt chart -->
       <div
         class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-md mb-6"
       >
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-xl font-semibold">Process Timeline</h2>
-          <!-- NEW: Expand button, hidden by default -->
           <button
             id="expand-chart-btn"
             class="hidden px-4 py-1 bg-gray-600 hover:bg-gray-500 rounded-md text-sm"
@@ -86,6 +92,17 @@
         </div>
       </div>
 
+      <!-- Histogram chart -->
+      <div
+        class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-md mb-6"
+      >
+        <h2 class="text-xl font-semibold mb-4">Execution Time Distribution</h2>
+        <div class="histogram-chart-container">
+          <svg id="histogram-chart" class="w-full"></svg>
+        </div>
+      </div>
+
+      <!-- Raw JSON data -->
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-md">
         <h2 class="text-xl font-semibold mb-4">Raw JSON Data</h2>
         <pre
@@ -102,6 +119,7 @@ Waiting for data...</pre
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/libs/d3/d3.min.js"></script>
+    <script src="/js/histogram.js"></script>
     <script src="/js/ganttChart.js"></script>
     <script src="/js/app.js" defer></script>
   </body>

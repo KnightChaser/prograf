@@ -1,6 +1,6 @@
 // server/public/js/ganttChart.js
 
-const MAX_INITIAL_NODES = 20; // Max nodes to show before needing to expand
+const MAX_INITIAL_NODES = 20;
 
 /**
  * Flattens the hierarchical tree data and calculates time bounds.
@@ -43,7 +43,6 @@ function createGanttChart(data, svgSelector, forceFull = false) {
     return;
   }
 
-  // *** FIX: Use a mutable variable for the list to be rendered ***
   let renderList = flatList;
 
   // Expand/collapse logic

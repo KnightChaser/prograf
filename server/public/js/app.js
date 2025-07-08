@@ -6,7 +6,8 @@ const prevBtn = document.getElementById("prev-btn");
 const nextBtn = document.getElementById("next-btn");
 const logCounterEl = document.getElementById("log-counter");
 const jsonOutputEl = document.getElementById("json-output");
-const chartSvgSelector = "#gantt-chart";
+const ganttChartSelector = "#gantt-chart";
+const histogramSelector = "#histogram-chart";
 
 // State
 let currentIndex = -1;
@@ -24,8 +25,9 @@ async function fetchLog(index) {
     // Update JSON viewer
     jsonOutputEl.textContent = JSON.stringify(data, null, 2);
 
-    // Use the imported module to render the chart
-    createGanttChart(data, chartSvgSelector);
+    // Use the imported module to render the charts
+    createGanttChart(data, ganttChartSelector);
+    createHistogram(data, histogramSelector);
 
     currentIndex = index;
     updateUI();
